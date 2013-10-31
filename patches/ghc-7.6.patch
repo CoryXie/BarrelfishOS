@@ -1,0 +1,71 @@
+diff --git a/hake/Main.hs b/hake/Main.hs
+index 8a42a3b..bf0c75b 100644
+--- a/hake/Main.hs
++++ b/hake/Main.hs
+@@ -19,7 +19,7 @@ import System.Directory
+ import System.Exit
+ import GHC hiding (Target)
+ import GHC.Paths ( libdir )
+-import DynFlags ( defaultLogAction,
++import DynFlags ( defaultFatalMessager, defaultFlushOut,
+                   xopt_set,
+                   ExtensionFlag (Opt_DeriveDataTypeable) )
+ import Data.Dynamic
+@@ -362,7 +362,7 @@ evalHakeFiles o allfiles hakefiles =
+                     ".", 
+                     (opt_bfsourcedir o) ./. "hake" ]
+     in do 
+-      defaultErrorHandler defaultLogAction $ do
++      defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
+          runGhc (Just libdir) $ do
+            dflags <- getSessionDynFlags
+           let dflags1 = foldl xopt_set dflags [ Opt_DeriveDataTypeable ]
+diff --git a/tools/mackerel/Fields.hs b/tools/mackerel/Fields.hs
+index 267cd5e..4d2e860 100644
+--- a/tools/mackerel/Fields.hs
++++ b/tools/mackerel/Fields.hs
+@@ -121,11 +121,11 @@ make_ftype t@(TypeRef _ _) dn = Just (TN.fromRef t dn)
+ -- are polymorphic so that they don't need to know how large the total
+ -- load unit is (32 bits? 8 bits?) etc.
+ --
+-extract_mask :: (Bits a) => Rec -> Integer -> a
++extract_mask :: (Num a, Bits a) => Rec -> Integer -> a
+ extract_mask f sz = 
+     foldl setBit 0 (enumFromTo (fromInteger $ offset f) 
+                                (fromInteger $ (offset f) + (size f) - 1))
+-insert_mask :: (Bits a) => Rec -> Integer -> a
++insert_mask :: (Num a, Bits a) => Rec -> Integer -> a
+ insert_mask f sz = 
+     foldl complementBit (extract_mask f sz) (enumFromTo 0 (fromInteger sz - 1))
+ 
+diff --git a/tools/mackerel/Main.hs b/tools/mackerel/Main.hs
+index 3a8e55d..6a3e0a7 100644
+--- a/tools/mackerel/Main.hs
++++ b/tools/mackerel/Main.hs
+@@ -26,6 +26,7 @@ import qualified BitFieldDriver
+ import qualified ShiftDriver
+ import Checks
+ import Dev
++import Control.Exception
+ 
+ --
+ -- Command line options and parsing code
+diff --git a/tools/mackerel/ShiftDriver.hs b/tools/mackerel/ShiftDriver.hs
+index 2a2161b..4ea09f2 100644
+--- a/tools/mackerel/ShiftDriver.hs
++++ b/tools/mackerel/ShiftDriver.hs
+@@ -306,12 +306,12 @@ snputs_like_call s = snprintf_like_call "snprintf" [ C.StringConstant $ percent_
+ --
+ -- Functions to generate masks to select or deselect a subfield of bits
+ --
+-select_mask :: (Bits a) => Integer -> Integer -> Integer -> a
++select_mask :: (Num a, Bits a) => Integer -> Integer -> Integer -> a
+ select_mask word_size start width = 
+     foldl setBit 0 (enumFromTo (fromInteger $ start) 
+                                (fromInteger $ start + width - 1))
+ 
+-deselect_mask :: (Bits a) => Integer -> Integer -> Integer -> a
++deselect_mask :: (Num a, Bits a) => Integer -> Integer -> Integer -> a
+ deselect_mask word_size start width = 
+     foldl complementBit (select_mask word_size start width) 
+               (enumFromTo 0 (fromInteger word_size - 1))
